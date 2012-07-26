@@ -9,12 +9,12 @@ from os import environ, makedirs
 from math import *
 from time import strftime
 from tttlib import *
+from admin_commands import *
 
-# Admin name(s) for certain commands
-# Usage:
-#       if sender in ADMINS:
-#           myfunc()
-ADMINS = ["SlimTim10", "Z_Mass", "intothev01d", "naxir"]
+# Command dicts
+# Command dicts must have strings for command names and functions that have parameters(info, cmd, sender)
+# functions should return message if appropriate
+admin_commands = {'!die': die, '!add_admin': add_admin, '!remove_admin' : remove_admin}
 
 def split_privmsg(privmsg):
     # Split the received PRIVMSG message into two useful parts
@@ -49,53 +49,32 @@ def parsemsg(info, msg, sender):
 
 # --- Utilities ---
         
-        # The following is the implementation of commands which alter usermodes
-        # !<command> <nickname>
-        # This command will change the mode of the sender if no paramter is given, otherwise
-        # it will modify the specified user. (admin command)
-        # Syntax of message sent to irc server: MODE #channel +-ov nickname
-        modeCommands = { '!op': '+o', '!deop': '-o', '!voice': '+v', '!devoice': '-v' }
         
-        if cmd[0] in modeCommands.keys() and sender in ADMINS:
-            # Begin forming return string by writing: MODE channelname
-            ret = 'MODE ' + info[2]
-            # Next, specify the mode
-            ret += ' ' + modeCommands[cmd[0]] + ' '
 
-            # Finally, specify target     
-            if len(cmd) == 1:
-                ret += sender
-            else:
-                ret += cmd[1]
-            return ret + "\n" # we should be all done now.
+        # Admin commands
+        if sender in ADMINS:
+            if cmd[0] in admin_commands:
+                ret = admin_commands[cmd[0]](info, cmd, sender)
 
-# The '!die' command makes the bot quit (admin command)
-        if cmd[0] == '!die' and sender in ADMINS:
-            ret = 'QUIT\n'
+            # The following is the implementation of commands which alter usermodes
+            # !<command> <nickname>
+            # This command will change the mode of the sender if no paramter is given, otherwise
+            # it will modify the specified user. (admin command)
+            # Syntax of message sent to irc server: MODE #channel +-ov nickname
+            modeCommands = { '!op': '+o', '!deop': '-o', '!voice': '+v', '!devoice': '-v' }
+            
+            if cmd[0] in modeCommands.keys():
+                # Begin forming return string by writing: MODE channelname
+                ret = 'MODE ' + info[2]
+                # Next, specify the mode
+                ret += ' ' + modeCommands[cmd[0]] + ' '
 
-# The '!add_admin' command adds an admin
-        if cmd[0] == "!add_admin" and sender in ADMINS:
-            try:
-                user_to_add = cmd[1]
-                ADMINS.append(user_to_add)
-                ret = 'PRIVMSG ' + info[2] + \
-                ' :'+user_to_add+' added as admin\n'
-
-            except:
-                ret = 'PRIVMSG ' + info[2] + \
-                ' :Command help: Specify a user\n'
-
-# The '!remove_admin' command removes an admin
-        if cmd[0] == "!remove_admin" and sender in ADMINS:
-            try:
-                user_to_remove = cmd[1]
-                ADMINS.remove(user_to_remove)
-                ret = 'PRIVMSG ' + info[2] + \
-                ' :'+user_to_remove+' removed as admin\n'
-
-            except:
-                ret = 'PRIVMSG ' + info[2] + \
-                ' :Command help: Specify an admin\n'
+                # Finally, specify target     
+                if len(cmd) == 1:
+                    ret += sender
+                else:
+                    ret += cmd[1]
+                return ret + "\n" # we should be all done now.
 
 # The '!list_admins' lists all the Admins
         if cmd[0] == '!list_admins':
@@ -285,7 +264,6 @@ def parsemsg(info, msg, sender):
 
     return ret            # Return the appropriate string
 
-
 def setConfig():
     """Return a dict containing bot config values."""
     # This function will set the config values one of three ways
@@ -317,8 +295,8 @@ def setConfig():
         REALNAME = NICK
         CHANNEL = raw_input("CHANNEL: ")
         # Add User to ADMINS list (to let User use '!die' command)
-        add_admin = raw_input("ADMIN: ")
-        ADMINS.append(add_admin)
+        admin_to_add = raw_input("ADMIN: ")
+        ADMINS.append(admin_to_add)
         print "Thank you. Starting up the bot.\n"
     # -- Config file settings --
     elif ('c' in flags or '--config' in long_args) and len(argv) >= 3:
